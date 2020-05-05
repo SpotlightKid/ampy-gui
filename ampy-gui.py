@@ -93,7 +93,6 @@ class AppWindow(Gtk.ApplicationWindow):
         self.add(box_outer)
 
         # SETTINGS PANEL SETUP
-
         port_label = Gtk.Label.new("Port")
         delay_label = Gtk.Label.new("Delay")
         baud_label = Gtk.Label.new("Baud Rate")
@@ -141,8 +140,7 @@ class AppWindow(Gtk.ApplicationWindow):
         settings_frame = Gtk.Frame()
         settings_frame.add(settingsbox)
         settings_frame.set_shadow_type(0)
-        # pack settings box into outer box
-
+        # Pack settings box into outer box
         box_outer.pack_start(settings_frame, False, False, 0)
 
         # ICONS
@@ -206,7 +204,6 @@ class AppWindow(Gtk.ApplicationWindow):
         putget_box.pack_start(put_button, False, False, 0)
 
         # DEFINE REMOTE FUNCTION BOXES
-
         remote_buttons_box = Gtk.Box(
             orientation=Gtk.Orientation.VERTICAL, spacing=6, valign="center"
         )
@@ -368,13 +365,12 @@ class AppWindow(Gtk.ApplicationWindow):
         store = local_treeview.get_model()
         store.clear()
         location = self.current_local_path
-        # Build the tree path out of current_local_path.
 
+        # Build the tree path out of current_local_path.
         iter = store.append()
         store.set(iter, self.ICON, self.diricon, self.FILENAME, "..")
 
         # Parse through the directory, adding all of its contents to the model.
-
         filelst = os.listdir(location)
         filelst.sort()
         for file in filelst:
@@ -682,6 +678,7 @@ class Warning(Gtk.Dialog):
 class PopUp(Gtk.Dialog):
     def __init__(self, parent):
         Gtk.Dialog.__init__(self, "", parent, 0)
+
         self.add_buttons(
             Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL, Gtk.STOCK_OK, Gtk.ResponseType.OK
         )
