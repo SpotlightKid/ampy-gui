@@ -2,6 +2,7 @@
 
 import math
 import os
+import re
 import subprocess
 import sys
 from os.path import abspath, dirname, isdir, isfile
@@ -14,6 +15,9 @@ import gi
 gi.require_version("Gdk", "3.0")
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gdk, GdkPixbuf, GObject, Gtk
+
+
+FNAME_SIZE_RX = re.compile(r"(?P<fname>.*?) - (?P<size>\d+) bytes$")
 
 
 class AppWindow(Gtk.ApplicationWindow):
@@ -392,14 +396,15 @@ class AppWindow(Gtk.ApplicationWindow):
         # Add .. to directory
         iter = remote_store.append()
         remote_store.set(iter, self.ICON, self.diricon, self.FILENAME, "..", self.TYPE, "d")
-        filelist = self.load_remote_directory(self.current_remote_path)
-        for f in filelist:
-            if self.is_remote_dir(rmjoin(self.current_remote_path, f)):
+
+        for f, size in self.load_remote_directory(self.current_remote_path):
+            if size == 0 and self.is_remote_dir(rmjoin(self.current_remote_path, f)):
                 iter = remote_store.append()
                 isdir = "d"
                 remote_store.set(iter, self.ICON, self.diricon, self.FILENAME, f, self.TYPE, isdir)
             else:
                 nondirs.append(f)
+
         for f in range(len(nondirs)):
             iter = remote_store.append()
             remote_store.set(
@@ -436,19 +441,27 @@ class AppWindow(Gtk.ApplicationWindow):
                 "-d",
                 self.ampy_args[2],
                 "ls",
+                "-l",
                 path,
             ]
             output = subprocess.run(args, capture_output=True)
             if output.stderr.decode("utf-8") == "":
-                filestring = output.stdout.decode("utf-8")
-                filelist = filestring.split("\n")
                 i = 0
                 returnlist = []
-                for fname in filelist:
+
+                for fname in output.stdout.decode("utf-8").split("\n"):
+                    match = FNAME_SIZE_RX.match(fname)
+                    if match:
+                        fname = match.group("fname")
+                        size = int(match.group("size"))
+                    else:
+                        size = None
+
                     if fname != "":
                         head, tail = rmsplit(fname)
-                        returnlist.append(tail)
+                        returnlist.append((tail, size))
                         i += 1
+
                 return returnlist
             else:
                 return []
