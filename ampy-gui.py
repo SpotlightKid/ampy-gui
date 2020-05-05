@@ -57,7 +57,11 @@ class AppWindow(Gtk.ApplicationWindow):
             screen, provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
         )
 
-        self.ampy_args = ["/dev/ttyUSB0", "115200", "0"]
+        self.ampy_args = [
+            os.environ.get("AMPY_PORT", "/dev/ttyUSB0"),
+            os.environ.get("AMPY_BAUD", "115200"),
+            os.environ.get("AMPY_DELAY", "0"),
+        ]
         self.update_ampy_command()
 
         self.baud_rates = [
