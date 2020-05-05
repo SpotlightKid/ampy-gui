@@ -4,6 +4,11 @@ import math
 import os
 import subprocess
 import sys
+from os.path import abspath, dirname, isdir, isfile
+from os.path import join as ljoin
+from os.path import split as lsplit
+from posixpath import join as rmjoin
+from posixpath import split as rmsplit
 
 import gi
 gi.require_version("Gdk", "3.0")
@@ -25,7 +30,7 @@ class AppWindow(Gtk.ApplicationWindow):
 
         self.current_local_path = os.getcwd()
 
-        self.progpath = os.path.dirname(sys.argv[0])
+        self.progpath = dirname(abspath(__file__))
 
         self.current_remote_path = ""
 
@@ -131,6 +136,10 @@ class AppWindow(Gtk.ApplicationWindow):
         # pack settings box into outer box
 
         box_outer.pack_start(settings_frame, False, False, 0)
+
+        # ICONS
+        self.diricon = GdkPixbuf.Pixbuf.new_from_file(ljoin(self.progpath, "directory.png"))
+        self.fileicon = GdkPixbuf.Pixbuf.new_from_file(ljoin(self.progpath, "file.png"))
 
         # FILE BROWSER BOX
         filebrowser_box = Gtk.Box(
@@ -354,49 +363,44 @@ class AppWindow(Gtk.ApplicationWindow):
         # Build the tree path out of current_local_path.
 
         iter = store.append()
-        pixbuf = GdkPixbuf.Pixbuf.new_from_file(self.progpath + "/" + "directory.png")
-        store.set(iter, self.ICON, pixbuf, self.FILENAME, "..")
+        store.set(iter, self.ICON, self.diricon, self.FILENAME, "..")
 
         # Parse through the directory, adding all of its contents to the model.
 
         filelst = os.listdir(location)
         filelst.sort()
         for file in filelst:
-            temp = location + "/" + file
-            if os.path.isdir(temp):
-                pixbuf = GdkPixbuf.Pixbuf.new_from_file(self.progpath + "/" + "directory.png")
+            temp = ljoin(location, file)
+            if isdir(temp):
                 iter = store.append()
-                store.set(iter, self.ICON, pixbuf, self.FILENAME, file)
+                store.set(iter, self.ICON, self.diricon, self.FILENAME, file)
 
         for file in filelst:
-            temp = location + "/" + file
-            if os.path.isfile(temp):
-                pixbuf = GdkPixbuf.Pixbuf.new_from_file(self.progpath + "/" + "file.png")
+            temp = ljoin(location, file)
+            if isfile(temp):
                 iter = store.append()
-                store.set(iter, self.ICON, pixbuf, self.FILENAME, file)
+                store.set(iter, self.ICON, self.fileicon, self.FILENAME, file)
 
     def populate_remote_tree_model(self, remote_treeview):
-
         remote_store = remote_treeview.get_model()
         remote_store.clear()
         nondirs = []
         # Add .. to directory
         iter = remote_store.append()
-        pixbuf = GdkPixbuf.Pixbuf.new_from_file(self.progpath + "/" + "directory.png")
-        remote_store.set(iter, self.ICON, pixbuf, self.FILENAME, "..", self.TYPE, "d")
+        remote_store.set(iter, self.ICON, self.diricon, self.FILENAME, "..", self.TYPE, "d")
         filelist = self.load_remote_directory(self.current_remote_path)
         for f in filelist:
-            if self.is_remote_dir(self.current_remote_path + "/" + f):
+            if self.is_remote_dir(rmjoin(self.current_remote_path, f)):
                 iter = remote_store.append()
-                pixbuf = GdkPixbuf.Pixbuf.new_from_file(self.progpath + "/" + "directory.png")
                 isdir = "d"
-                remote_store.set(iter, self.ICON, pixbuf, self.FILENAME, f, self.TYPE, isdir)
+                remote_store.set(iter, self.ICON, self.diricon, self.FILENAME, f, self.TYPE, isdir)
             else:
                 nondirs.append(f)
         for f in range(len(nondirs)):
             iter = remote_store.append()
-            pixbuf = GdkPixbuf.Pixbuf.new_from_file(self.progpath + "/" + "file.png")
-            remote_store.set(iter, self.ICON, pixbuf, self.FILENAME, nondirs[f], self.TYPE, "f")
+            remote_store.set(
+                iter, self.ICON, self.fileicon, self.FILENAME, nondirs[f], self.TYPE, "f",
+            )
 
     def is_remote_dir(self, path):
         args = [
@@ -438,7 +442,7 @@ class AppWindow(Gtk.ApplicationWindow):
                 returnlist = []
                 for fname in filelist:
                     if fname != "":
-                        head, tail = os.path.split(fname)
+                        head, tail = rmsplit(fname)
                         returnlist.append(tail)
                         i += 1
                 return returnlist
@@ -475,7 +479,7 @@ class AppWindow(Gtk.ApplicationWindow):
                 fname, ftype = row_selected
                 if ftype == "f":
                     os.chdir(self.current_local_path)
-                    args = ["get", fname, self.current_local_path + "/" + fname]
+                    args = ["get", fname, ljoin(self.current_local_path, fname)]
                     output = subprocess.run(self.ampy_command + args, capture_output=True)
                     if output.returncode == 0:
                         self.populate_local_tree_model(local_treeview)
@@ -487,9 +491,8 @@ class AppWindow(Gtk.ApplicationWindow):
             if file_selected == 0:
                 return
             else:
-                source = self.current_local_path + "/" + file_selected
-                dest = self.current_remote_path + "/" + file_selected
-
+                source = ljoin(self.current_local_path, file_selected)
+                dest = rmjoin(self.current_remote_path, file_selected)
                 args = ["put", source, dest]
                 output = subprocess.run(self.ampy_command + args, capture_output=True)
                 if output.returncode == 0:
@@ -504,7 +507,7 @@ class AppWindow(Gtk.ApplicationWindow):
             else:
                 fname, ftype = row_selected
                 if ftype == "f":
-                    args = ["rm", self.current_remote_path + "/" + fname]
+                    args = ["rm", rmjoin(self.current_remote_path, fname)]
                     output = subprocess.run(self.ampy_command + args, capture_output=True)
                     if output.returncode == 0:
                         self.populate_remote_tree_model(remote_treeview)
@@ -522,7 +525,7 @@ class AppWindow(Gtk.ApplicationWindow):
             else:
                 fname, ftype = row_selected
                 if ftype == "d":
-                    args = ["rmdir", self.current_remote_path + "/" + fname]
+                    args = ["rmdir", rmjoin(self.current_remote_path, fname)]
                     output = subprocess.run(self.ampy_command + args, capture_output=True)
                     if output.returncode == 0:
                         self.populate_remote_tree_model(remote_treeview)
@@ -542,7 +545,7 @@ class AppWindow(Gtk.ApplicationWindow):
                 dirname = dialog.get_result()
             dialog.destroy()
             if dirname != "":
-                args = ["mkdir", self.current_remote_path + "/" + dirname]
+                args = ["mkdir", rmjoin(self.current_remote_path, dirname)]
                 output = subprocess.run(self.ampy_command + args, capture_output=True)
                 if output.returncode == 0:
                     self.populate_remote_tree_model(remote_treeview)
@@ -573,7 +576,7 @@ class AppWindow(Gtk.ApplicationWindow):
             else:
                 fname, ftype = row_selected
                 if ftype == "f":
-                    usepath = self.current_remote_path + "/" + fname
+                    usepath = rmjoin(self.current_remote_path, fname)
                     usepath = usepath.strip("/")
 
                     args = ["run", usepath]
@@ -594,12 +597,12 @@ class AppWindow(Gtk.ApplicationWindow):
         iter = model.get_iter(fpath)
         if iter:
             file = model.get_value(iter, self.FILENAME)
-            location = self.current_local_path + "/" + file
+            location = ljoin(self.current_local_path, file)
             if file == "..":
-                head, tail = os.path.split(self.current_local_path)
+                head, tail = lsplit(self.current_local_path)
                 self.current_local_path = head
                 location = self.current_local_path
-            if os.path.isdir(location):
+            if isdir(location):
                 self.current_local_path = location
                 self.populate_local_tree_model(local_treeview)
 
@@ -612,11 +615,10 @@ class AppWindow(Gtk.ApplicationWindow):
                 fname = model.get_value(iter, self.FILENAME)
                 icon = model.get_value(iter, self.ICON)
                 ftype = model.get_value(iter, self.TYPE)
-
-                location = self.current_remote_path + "/" + fname
+                location = rmjoin(self.current_remote_path, fname)
 
                 if fname == "..":
-                    head, tail = os.path.split(self.current_remote_path)
+                    head, tail = rmsplit(self.current_remote_path)
                     self.current_remote_path = head
                     self.populate_remote_tree_model(remote_treeview)
                 else:
