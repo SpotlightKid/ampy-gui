@@ -1,13 +1,13 @@
 #!/usr/bin/python3
 
-import sys, os
-import gi
-
-gi.require_version("Gtk", "3.0")
-from gi.repository import Gtk, GObject, GdkPixbuf
-from gi.repository import Gdk
-import subprocess
 import math
+import os
+import subprocess
+import sys
+
+import gi
+gi.require_version("Gtk", "3.0")
+from gi.repository import Gdk, GdkPixbuf, GObject, Gtk
 
 
 class AppWindow(Gtk.ApplicationWindow):
